@@ -690,12 +690,6 @@
                 <menuItem title="Item" id="Qjc-qS-fQz">
                     <modifierMask key="keyEquivalentModifierMask"/>
                 </menuItem>
-                <menuItem title="Item" id="y7p-Oa-gcy">
-                    <modifierMask key="keyEquivalentModifierMask"/>
-                </menuItem>
-                <menuItem title="Item" id="bB0-7k-4A4">
-                    <modifierMask key="keyEquivalentModifierMask"/>
-                </menuItem>
                 <menuItem isSeparatorItem="YES" id="1zG-ci-03A"/>
                 <menuItem title="Foxbit" tag="100" id="gzl-vY-xVB">
                     <modifierMask key="keyEquivalentModifierMask"/>
@@ -716,12 +710,6 @@
                     <modifierMask key="keyEquivalentModifierMask"/>
                 </menuItem>
                 <menuItem title="Item" id="wbf-kG-Fm9">
-                    <modifierMask key="keyEquivalentModifierMask"/>
-                </menuItem>
-                <menuItem title="Item" id="LBP-IT-50r">
-                    <modifierMask key="keyEquivalentModifierMask"/>
-                </menuItem>
-                <menuItem title="Item" id="8mp-80-3sS">
                     <modifierMask key="keyEquivalentModifierMask"/>
                 </menuItem>
                 <menuItem isSeparatorItem="YES" id="wLY-gY-SoU"/>

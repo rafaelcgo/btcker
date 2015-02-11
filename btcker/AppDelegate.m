@@ -8,8 +8,27 @@
 
 #import "AppDelegate.h"
 
+#define fontSize  @11.0
+
+// {"high": "222.00",
+//  "last": "221.90",
+//  "timestamp": "1423618756",
+//  "bid": "221.79",
+//  "vwap": "218.81",
+//  "volume": "7430.56344671",
+//  "low": "215.00",
+//  "ask": "221.90"}
 #define urlBitstamp  @"https://www.bitstamp.net/api/ticker/"
-#define urlFoxbit    @"https://www.bitstamp.net/api/ticker/"
+
+// {"high": 669.0,
+//  "vol": 98.26505854,
+//  "buy": 653.79,
+//  "last": 653.79,
+//  "low": 637.0,
+//  "pair": "BTCBRL",
+//  "sell": 656.98,
+//  "vol_brl": 63617.11713811}
+#define urlFoxbit    @"https://api.blinktrade.com/api/v1/BRL/ticker?crypto_currency=BTC"
 
 @interface AppDelegate ()
 
@@ -27,7 +46,7 @@
 - (void) awakeFromNib {
     self.statusBar = [[NSStatusBar systemStatusBar] statusItemWithLength:NSVariableStatusItemLength];
     
-    self.statusBar.title = @"BTCker";
+    self.statusBar.title = @"BTCker loading...";
     self.statusBar.menu = self.statusMenu;
     self.statusBar.highlightMode = YES;
 
@@ -40,7 +59,6 @@
     exchanges = [NSMutableDictionary dictionaryWithObjects:@[@"0.00", @"0.00"] forKeys:@[@"bitstamp", @"foxbit"]];
     [self setTimer];
     [self getDataFromExchanges];
-
 }
 
 - (void)applicationWillTerminate:(NSNotification *)aNotification {
@@ -49,12 +67,12 @@
 
 -(void) getDataFromExchanges {
     NSLog(@"getDataFromExchanges");
-    [self getDataFromExchange:urlBitstamp];
-    [self getDataFromExchange:urlFoxbit];
+    [self getDataFromExchange:@"bitstamp" withUrl:urlBitstamp];
+    [self getDataFromExchange:@"foxbit" withUrl:urlFoxbit];
     [self updateMenuTitle];
 }
 
--(void) getDataFromExchange:(NSString *)exchangeUrl {
+-(void) getDataFromExchange:(NSString *)exchange withUrl:(NSString *)exchangeUrl {
     NSLog(@"getDataFromExchange: %@", exchangeUrl);
     NSURL* URL = [NSURL URLWithString:exchangeUrl];
 
@@ -62,29 +80,44 @@
         NSData* data = [NSData dataWithContentsOfURL:URL];
 
         dispatch_async(dispatch_get_main_queue(), ^{
-            [self updateMenuValues:data];
+            [self updateMenuValues:data forExchange:exchange];
         });
     });
 }
 
-- (void) updateMenuValues:(NSData *)data {
+- (void) updateMenuValues:(NSData *)data forExchange:(NSString *)exchange{
     NSLog(@"updateMenuValues");
     if (data == nil) return;
     
     NSError* error = nil;
+    NSDictionary *keyToValue;
     NSDictionary* json = [NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingMutableContainers error:&error];
     NSString *jsonString = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
     NSLog(@"JSON Response: %@",jsonString);
     
-    NSDictionary *keyToValue = @{@"volume" : @1,
-                                 @"high" : @2,
-                                 @"last" : @3,
-                                 @"ask" : @4,
-                                 @"bid" : @5,
-                                 @"vwap" : @6,
-                                 @"low" : @7,
-                                 @"timestamp" : @8};
+    if ([exchange  isEqualToString: @"bitstamp"]) {
+        keyToValue = @{@"last" : @1,
+                       @"high" : @2,
+                       @"low" : @3,
+                       @"volume" : @4,
+                       @"ask" : @5,
+                       @"bid" : @6,
+                       @"vwap" : @-1,
+                       @"timestamp" : @-1};
+    }
+    else if ([exchange isEqualToString:@"foxbit"]) {
+        keyToValue = @{@"last" : @9,
+                       @"high" : @10,
+                       @"low" : @11,
+                       @"vol" : @12,
+                       @"sell" : @13,
+                       @"buy" : @14,
+                       @"pair" : @-1,
+                       @"vol_brl" : @-1};
+    }
     
+
+
     [json enumerateKeysAndObjectsUsingBlock:^(id key, id obj, BOOL *stop) {
         NSLog(@"%@ %@", key, obj);
         NSString* value;
@@ -102,21 +135,25 @@
         }
         
         // Set the new Label: Value @ the menu item of the _statusMenu
-        [[_statusMenu itemAtIndex:[[keyToValue valueForKey:key] integerValue]] setTitle:[NSString stringWithFormat:@"%@: \t%@", label, value]];
+        NSInteger index = [[keyToValue valueForKey:key] integerValue];
+        if (index != -1) {
+            [[_statusMenu itemAtIndex:index] setTitle:[NSString stringWithFormat:@"%@: \t%@", label, value]];
+        }
     }];
 
-    [exchanges setValue:json[@"last"] forKey:@"bitstamp"];
+    [exchanges setValue:json[@"last"] forKey:exchange];
 }
 
 - (void) updateMenuTitle {
     NSLog(@"updateMenuTitle");
-    NSString* lastPrice = [exchanges objectForKey:@"bitstamp"];
-    NSLog(@"updateMenuTitle: %@", lastPrice);
+    NSString* lastPriceBitStamp = [exchanges objectForKey:@"bitstamp"];
+    NSString* lastPriceFoxBit = [exchanges objectForKey:@"foxbit"];
+    NSLog(@"updateMenuTitle: %@", lastPriceBitStamp);
     
     NSDictionary *attributes = [NSDictionary dictionaryWithObjectsAndKeys:
-                                [NSFont systemFontOfSize: 11.0], NSFontAttributeName, nil];
+                                [NSFont systemFontOfSize: [fontSize floatValue]], NSFontAttributeName, nil];
     NSMutableAttributedString* s = [[NSMutableAttributedString alloc]
-                                    initWithString:[NSString stringWithFormat:@"%@: %@ | %@: %@", @"Bitstamp", lastPrice, @"Foxbit", lastPrice]
+                                    initWithString:[NSString stringWithFormat:@"%@: %@ | %@: %@", @"Bitstamp", lastPriceBitStamp, @"Foxbit", lastPriceFoxBit]
                                     attributes:attributes];
     [_statusBar setAttributedTitle:s];
 }
