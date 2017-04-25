@@ -17,7 +17,8 @@
 //  "vwap": "218.81",
 //  "volume": "7430.56344671",
 //  "low": "215.00",
-//  "ask": "221.90"}
+//  "ask": "221.90",
+//  "open": "222.00"}
 #define urlBitstamp  @"https://www.bitstamp.net/api/ticker/"
 
 // {"high": 669.0,
@@ -29,6 +30,20 @@
 //  "sell": 656.98,
 //  "vol_brl": 63617.11713811}
 #define urlFoxbit    @"https://api.blinktrade.com/api/v1/BRL/ticker?crypto_currency=BTC"
+
+// {"BTC_DCR":
+//  {"id":162,
+//  "last":"0.01347828",
+//  "lowestAsk":"0.01345777",
+//  "highestBid":"0.01340003",
+//  "percentChange":"-0.01818912",
+//  "baseVolume":"1104.74075448",
+//  "quoteVolume":"81078.19915898",
+//  "isFrozen":"0",
+//  "high24hr":"0.01437768",
+//  "low24hr":"0.01303200"},
+// }
+#define urlPoloniex  @"https://poloniex.com/public?command=returnTicker"
 
 @interface AppDelegate ()
 
@@ -56,7 +71,7 @@
 
 - (void)applicationDidFinishLaunching:(NSNotification *)aNotification {
     // Insert code here to initialize your application
-    exchanges = [NSMutableDictionary dictionaryWithObjects:@[@"0.00", @"0.00"] forKeys:@[@"bitstamp", @"foxbit"]];
+    exchanges = [NSMutableDictionary dictionaryWithObjects:@[@"0.00", @"0.00", @"0.00"] forKeys:@[@"bitstamp", @"foxbit", @"poloniex"]];
     [self setTimer];
     [self getDataFromExchanges];
 }
@@ -66,14 +81,14 @@
 }
 
 -(void) getDataFromExchanges {
-    NSLog(@"getDataFromExchanges");
+    NSLog(@"[getDataFromExchanges]");
     [self getDataFromExchange:@"bitstamp" withUrl:urlBitstamp];
     [self getDataFromExchange:@"foxbit" withUrl:urlFoxbit];
-    [self updateMenuTitle];
+    [self getDataFromExchange:@"poloniex" withUrl:urlPoloniex];
 }
 
 -(void) getDataFromExchange:(NSString *)exchange withUrl:(NSString *)exchangeUrl {
-    NSLog(@"getDataFromExchange: %@", exchangeUrl);
+    NSLog(@"[getDataFromExchange] %@", exchangeUrl);
     NSURL* URL = [NSURL URLWithString:exchangeUrl];
 
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
@@ -81,58 +96,75 @@
 
         dispatch_async(dispatch_get_main_queue(), ^{
             [self updateMenuValues:data forExchange:exchange];
+            [self updateMenuTitle];
         });
     });
 }
 
 - (void) updateMenuValues:(NSData *)data forExchange:(NSString *)exchange{
-    NSLog(@"updateMenuValues");
+    NSLog(@"[updateMenuValues]");
     if (data == nil) return;
     
     NSError* error = nil;
     NSDictionary *keyToValue;
     NSDictionary* json = [NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingMutableContainers error:&error];
-    NSString *jsonString = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
-    NSLog(@"JSON Response: %@",jsonString);
+//    NSString *jsonString = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+//    NSLog(@"[updateMenuValues] JSON Response: %@",jsonString);
     
     if ([exchange  isEqualToString: @"bitstamp"]) {
         keyToValue = @{@"last" : @1,
                        @"high" : @2,
                        @"low" : @3,
-                       @"volume" : @4,
-                       @"ask" : @5,
-                       @"bid" : @6,
+                       @"ask" : @4,
+                       @"bid" : @5,
+                       @"volume" : @6,
                        @"vwap" : @-1,
-                       @"timestamp" : @-1};
+                       @"timestamp" : @-1,
+                       @"open" : @-1};
     }
     else if ([exchange isEqualToString:@"foxbit"]) {
         keyToValue = @{@"last" : @9,
                        @"high" : @10,
                        @"low" : @11,
-                       @"vol" : @12,
-                       @"sell" : @13,
-                       @"buy" : @14,
+                       @"sell" : @12,
+                       @"buy" : @13,
+                       @"vol" : @14,
                        @"pair" : @-1,
                        @"vol_brl" : @-1};
+    }
+    else if ([exchange isEqualToString:@"poloniex"]) {
+        keyToValue = @{@"id" : @-1,
+                       @"last" : @17,
+                       @"high24hr" : @18,
+                       @"low24hr" : @19,
+                       @"lowestAsk" : @20,
+                       @"highestBid" : @21,
+                       @"baseVolume" : @22,
+                       @"percentChange" : @-1,
+                       @"quoteVolume" : @-1,
+                       @"isFrozen" : @-1};
+        
+        json = [json objectForKey:@"BTC_DCR"];
     }
     
 
 
     [json enumerateKeysAndObjectsUsingBlock:^(id key, id obj, BOOL *stop) {
-        NSLog(@"%@ %@", key, obj);
+        NSLog(@"[updateMenuValues] %@: %@", key, obj);
         NSString* value;
-        NSString* label = [[key substringToIndex: MIN(4, [key length])] capitalizedString];
+        NSString* label = [[key substringToIndex: MIN(4, [key length])] uppercaseString];
         
-        // Format the date if the key is the Timestamp
-        if ([key isEqualToString: @"timestamp"]) {
-            NSDate *date = [NSDate dateWithTimeIntervalSince1970:[obj doubleValue]];
-            NSDateFormatter *formatter = [NSDateFormatter new];
-            [formatter setDateFormat:@"hh:mm:ss"];
-            value = [formatter stringFromDate:date];
-        }
-        else {
-            value = [NSString stringWithFormat:@"%.2f", [obj floatValue]];
-        }
+//        // Format the date if the key is the Timestamp
+//        if ([key isEqualToString: @"timestamp"]) {
+//            NSDate *date = [NSDate dateWithTimeIntervalSince1970:[obj doubleValue]];
+//            NSDateFormatter *formatter = [NSDateFormatter new];
+//            [formatter setDateFormat:@"hh:mm:ss"];
+//            value = [formatter stringFromDate:date];
+//        }
+//        else {
+//            value = [NSString stringWithFormat:@"%.2f", [obj floatValue]];
+//        }
+        value = [NSString stringWithFormat:@"%.8f", [obj floatValue]];
         
         // Set the new Label: Value @ the menu item of the _statusMenu
         NSInteger index = [[keyToValue valueForKey:key] integerValue];
@@ -145,15 +177,15 @@
 }
 
 - (void) updateMenuTitle {
-    NSLog(@"updateMenuTitle");
     NSString* lastPriceBitStamp = [exchanges objectForKey:@"bitstamp"];
     NSString* lastPriceFoxBit = [exchanges objectForKey:@"foxbit"];
-    NSLog(@"updateMenuTitle: %@", lastPriceBitStamp);
+    NSString* lastPricePoloniex = [exchanges objectForKey:@"poloniex"];
+    NSLog(@"[updateMenuTitle] Bitstamp: %@ | Foxbit: %@ | Poloniex: %@", lastPriceBitStamp, lastPriceFoxBit, lastPricePoloniex);
     
     NSDictionary *attributes = [NSDictionary dictionaryWithObjectsAndKeys:
                                 [NSFont systemFontOfSize: [fontSize floatValue]], NSFontAttributeName, nil];
     NSMutableAttributedString* s = [[NSMutableAttributedString alloc]
-                                    initWithString:[NSString stringWithFormat:@"%@: %@ | %@: %@", @"Bitstamp", lastPriceBitStamp, @"Foxbit", lastPriceFoxBit]
+                                    initWithString:[NSString stringWithFormat:@"%@: %@ | %@: %@ | %@: %@", @"S", lastPriceBitStamp, @"F", lastPriceFoxBit, @"P", lastPricePoloniex]
                                     attributes:attributes];
     [_statusBar setAttributedTitle:s];
 }
@@ -161,7 +193,7 @@
 // Timer that calls the getDataFromExchanges
 - (void) setTimer {
     double interval = 10.0;
-    NSLog(@"setTimer: %f", interval);
+    NSLog(@"[setTimer] %f", interval);
     [_getDataTimer invalidate];
     _getDataTimer = [NSTimer scheduledTimerWithTimeInterval:interval
                                                     target:self
